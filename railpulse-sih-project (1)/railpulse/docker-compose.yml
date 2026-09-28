@@ -1,0 +1,47 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: railpulse-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: railpulse
+      POSTGRES_PASSWORD: railpulse
+      POSTGRES_DB: railpulse
+    volumes:
+      - railpulse-db-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U railpulse"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+    container_name: railpulse-backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+psycopg2://railpulse:railpulse@postgres:5432/railpulse
+      JWT_SECRET_KEY: railpulse-dev-secret-change-in-production
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: railpulse-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "3000:80"
+
+volumes:
+  railpulse-db-data:
